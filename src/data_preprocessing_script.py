@@ -53,7 +53,7 @@ list_all_symptom_from_transaction = list(set(symptom_transaction_df['search_term
 query_embeddings = embedding_model.encode(list_all_symptom_from_transaction, prompt_name="query", show_progress_bar=True, batch_size=32)
 similarity = embedding_model.similarity(query_embeddings, document_embeddings)
 
-dict_master_word_icd10 = dict(zip(list_all_symptom_from_transaction, icd_df['ICDCode'].loc[similarity.argmin(dim=1)]))
+dict_master_word_icd10 = dict(zip(list_all_symptom_from_transaction, icd_df['ICDCode'].loc[similarity.argmax(dim=1)]))
 dict_icd10_master_word = defaultdict(list)
 for idx, val in tqdm(dict_master_word_icd10.items()):
     dict_icd10_master_word[val].append(idx)
