@@ -1,0 +1,13 @@
+[project]
+name = "kawin-agnos-ds-problem2"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi[standard]>=0.116.1",
+    "langchain-community>=0.3.27",
+    "pandas>=2.3.1",
+    "pymilvus<=2.4",
+    "sentence-transformers>=5.1.0",
+]
