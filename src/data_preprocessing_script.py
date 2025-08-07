@@ -19,8 +19,8 @@ icd_df=icd_df[icd_df['ICDCode'].str.contains("^(R(0|1|2|3|4|5|6))", regex=True)]
 
 # Part 1: Encode specific ICD10 Description in vector-based for similarity search
 
-# embedding with "Qwen/Qwen3-Embedding-0.6B", 1024 vector-dimensions
-embedding_model = SentenceTransformer("Qwen/Qwen3-Embedding-0.6B", similarity_fn_name=SimilarityFunction.COSINE)
+# embedding with "Qwen/Qwen3-Embedding-8B", 4096 vector-dimensions
+embedding_model = SentenceTransformer("Qwen/Qwen3-Embedding-8B", similarity_fn_name=SimilarityFunction.COSINE)
 
 documents = icd_df['Description'].values
 
