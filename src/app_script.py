@@ -16,8 +16,8 @@ class QueryOutputSchema(BaseModel):
     num_q: int
     num_recommendation: int
 
-# embedding with "Qwen/Qwen3-Embedding-0.6B", 1024 vector-dimensions
-embedding_model = SentenceTransformer("Qwen/Qwen3-Embedding-0.6B", similarity_fn_name=SimilarityFunction.COSINE)
+# embedding with "Qwen/Qwen3-Embedding-8B", 4096 vector-dimensions
+embedding_model = SentenceTransformer("Qwen/Qwen3-Embedding-8B", similarity_fn_name=SimilarityFunction.COSINE)
 
 icd10_document_metadata = pd.read_parquet("src/data/processed/icd10_document_metadata.parquet")
 with open("src/data/processed/icd10_document_embeddings.pkl", "rb") as ff:
