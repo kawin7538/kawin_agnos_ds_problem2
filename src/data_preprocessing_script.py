@@ -9,12 +9,12 @@ from tqdm import tqdm
 
 icd_df = pd.read_csv("src/data/raw/ICDCodeSet.csv")
 icd_df['ICDCode']=icd_df['ICDCode'].str.strip()
-icd_df['Description']=icd_df['Description'].str.strip()
+icd_df['Description']=icd_df['Description'].str.strip().str.lower()
 
 # Filter on ICD10 on symptoms, injury, poisoning, and other causes (~4x,xxx rows)
 # df=df[df['ICDCode'].str.contains("^(R|S|T)", regex=True)].reset_index(drop=True)
 
-# Filter on ICD10 symptoms that can be found without clinical and lab diag (R00-R69) (576 rows)
+# Filter on ICD10 symptoms that can be found without clinical and lab diag (R00-R69) (517 rows)
 icd_df=icd_df[icd_df['ICDCode'].str.contains("^(R(0|1|2|3|4|5|6))", regex=True)].reset_index(drop=True)
 
 # Part 1: Encode specific ICD10 Description in vector-based for similarity search
@@ -22,7 +22,7 @@ icd_df=icd_df[icd_df['ICDCode'].str.contains("^(R(0|1|2|3|4|5|6))", regex=True)]
 # embedding with "Qwen/Qwen3-Embedding-0.6B", 1024 vector-dimensions
 embedding_model = SentenceTransformer("Qwen/Qwen3-Embedding-0.6B", similarity_fn_name=SimilarityFunction.COSINE)
 
-documents = icd_df['Description'].values[:128]
+documents = icd_df['Description'].values
 
 document_embeddings = embedding_model.encode(documents, show_progress_bar=True, batch_size=32)
 
@@ -33,16 +33,7 @@ icd_df.to_parquet("src/data/processed/icd10_document_metadata.parquet", index=Fa
 with open("src/data/processed/icd10_document_embeddings.pkl", "wb") as ff:
     pkl.dump(document_embeddings, ff)
 
-# # queries = ["ใจสั่น"]
-# # query_embeddings = embedding_model.encode(queries, prompt_name="query")
-
-# # similarity = embedding_model.similarity(query_embeddings, document_embeddings)
-
-# # print(similarity)
-
-# Part 2: Map natural words to appropriated ICD10 using similarity search
-
-symptom_transaction_df = pd.read_csv("src/data/raw/[CONFIDENTIAL] AI symptom picker data (Agnos candidate assignment) - ai_symptom_picker.csv", usecols=['search_term'], nrows=100)
+symptom_transaction_df = pd.read_csv("src/data/raw/[CONFIDENTIAL] AI symptom picker data (Agnos candidate assignment) - ai_symptom_picker.csv", usecols=['search_term'])
 
 symptom_transaction_df['patient_idx']=range(symptom_transaction_df.shape[0])
 
@@ -50,6 +41,7 @@ symptom_transaction_df['search_term']=symptom_transaction_df['search_term'].str.
 symptom_transaction_df['search_term']=symptom_transaction_df['search_term'].str.split(',').apply(lambda list_x: [x.strip() for x in list_x if len(x.strip())>0])
 
 list_all_symptom_from_transaction = list(set(symptom_transaction_df['search_term'].explode().tolist()))
+print(f"{len(list_all_symptom_from_transaction)=}")
 query_embeddings = embedding_model.encode(list_all_symptom_from_transaction, prompt_name="query", show_progress_bar=True, batch_size=32)
 similarity = embedding_model.similarity(query_embeddings, document_embeddings)
 
@@ -72,9 +64,9 @@ transformation_encoder_obj = TransactionEncoder()
 icd10_terms_encoded = transformation_encoder_obj.fit_transform(symptom_transaction_df['icd10_term'])
 icd10_terms_encoded = pd.DataFrame(icd10_terms_encoded, columns=transformation_encoder_obj.columns_)
 
-frequent_itemsets = apriori(icd10_terms_encoded, min_support=0.01, use_colnames=True, max_len=10)
+frequent_itemsets = apriori(icd10_terms_encoded, min_support=1e-6, use_colnames=True, max_len=10)
 
-rules = association_rules(frequent_itemsets, metric="confidence", min_threshold=0.01)
+rules = association_rules(frequent_itemsets, metric="confidence", min_threshold=1e-6)
 rules = rules[['antecedents', 'consequents', 'support', 'confidence', 'lift']]
 rules['antecedents']=rules['antecedents'].apply(lambda x: set(x))
 rules['consequents']=rules['consequents'].apply(lambda x: set(x))

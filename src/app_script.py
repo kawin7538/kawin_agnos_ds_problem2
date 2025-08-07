@@ -32,7 +32,7 @@ def get_symptom_recommendation(list_q: List[str], max_items: int = 10):
     
     # convert list of queries into list of ICD10 using cosine similarity
 
-    temp_list_q = [q.strip() for q in list_q]
+    temp_list_q = [q.strip().lower() for q in list_q]
     print(f"{temp_list_q=}")
     query_embeddings = embedding_model.encode(temp_list_q, prompt_name="query", show_progress_bar=True, batch_size=32)
     similarity = embedding_model.similarity(query_embeddings, document_embeddings)
@@ -47,6 +47,7 @@ def get_symptom_recommendation(list_q: List[str], max_items: int = 10):
     masked = association_rule_df['antecedents'].apply(lambda x: set(x)==set(temp_list_icd10))
 
     ans_df = association_rule_df[masked].sort_values('confidence', ascending=False)
+    # ans_df = ans_df[(ans_df['lift']>=1)]
     print(ans_df.head(20))
 
     list_answer = list()
@@ -61,7 +62,7 @@ def get_symptom_recommendation(list_q: List[str], max_items: int = 10):
     print(f"{list_answer=}")
     print(f"{[dict_icd10_master_word.get(item, list())[0] for item in list_answer]=}")
 
-    list_answer = [dict_icd10_master_word.get(item, list())[0] for item in list_answer]
+    list_answer = [dict_icd10_master_word.get(item, list())[0].capitalize() for item in list_answer]
 
     return list_answer
 
