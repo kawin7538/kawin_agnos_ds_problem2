@@ -15,7 +15,10 @@ icd_df['Description']=icd_df['Description'].str.strip().str.lower()
 # df=df[df['ICDCode'].str.contains("^(R|S|T)", regex=True)].reset_index(drop=True)
 
 # Filter on ICD10 symptoms that can be found without clinical and lab diag (R00-R69) (517 rows)
-icd_df=icd_df[icd_df['ICDCode'].str.contains("^(R(0|1|2|3|4|5|6))", regex=True)].reset_index(drop=True)
+# icd_df=icd_df[icd_df['ICDCode'].str.contains("^(R(0|1|2|3|4|5|6))", regex=True)].reset_index(drop=True)
+
+# Filter on ICD10 symptoms (R00-R99) (567 rows)
+icd_df=icd_df[icd_df['ICDCode'].str.contains("^(R)", regex=True)].reset_index(drop=True)
 
 # Part 1: Encode specific ICD10 Description in vector-based for similarity search
 
