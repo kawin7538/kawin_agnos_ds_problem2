@@ -60,9 +60,9 @@ def get_symptom_recommendation(list_q: List[str], max_items: int = 10):
             break;
     
     print(f"{list_answer=}")
-    print(f"{[dict_icd10_master_word.get(item, list())[0] for item in list_answer]=}")
+    print(f"{[dict_icd10_master_word.get(item, list())[0] for item in list_answer if len(dict_icd10_master_word.get(item, list()))>0]=}")
 
-    list_answer = [dict_icd10_master_word.get(item, list())[0].capitalize() for item in list_answer]
+    list_answer = [dict_icd10_master_word.get(item, list())[0].capitalize() for item in list_answer if len(dict_icd10_master_word.get(item, list()))>0]
 
     return list_answer
 
