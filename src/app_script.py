@@ -1,5 +1,6 @@
-from typing import List, Literal, Optional
+from typing import List, Literal, Optional, Tuple
 from pydantic import BaseModel
+from functools import cache, lru_cache
 import pickle as pkl
 import pandas as pd
 from sentence_transformers import SentenceTransformer, SimilarityFunction
@@ -28,7 +29,10 @@ with open("src/data/processed/dict_icd10_master_word.pkl", "rb") as ff:
     dict_icd10_master_word = pkl.load(ff)
 association_rule_df = pd.read_parquet("src/data/processed/association_rules.parquet")
 
-def get_symptom_recommendation(list_q: List[str], max_items: int = 10):
+@lru_cache
+def get_symptom_recommendation(tuple_q: Tuple[str], max_items: int = 10):
+
+    list_q = list(tuple_q)
     
     # convert list of queries into list of ICD10 using cosine similarity
 
@@ -38,7 +42,8 @@ def get_symptom_recommendation(list_q: List[str], max_items: int = 10):
     similarity = embedding_model.similarity(query_embeddings, document_embeddings)
 
     temp_list_icd10 = icd10_document_metadata['ICDCode'].loc[similarity.argmax(dim=1)].tolist()
-    temp_list_icd10 = list(dict.fromkeys(temp_list_icd10))
+    # temp_list_icd10 = list(dict.fromkeys(temp_list_icd10))
+    temp_list_icd10 = list(set(temp_list_icd10))
 
     print(f"{temp_list_icd10=}")
 
@@ -47,22 +52,39 @@ def get_symptom_recommendation(list_q: List[str], max_items: int = 10):
     masked = association_rule_df['antecedents'].apply(lambda x: set(x)==set(temp_list_icd10))
 
     ans_df = association_rule_df[masked].sort_values('confidence', ascending=False)
-    # ans_df = ans_df[(ans_df['lift']>=1)]
+    ans_df = ans_df[(ans_df['lift']>=1)]
     print(ans_df.head(20))
 
-    list_answer = list()
+    list_icd10_answer = list()
     for list_consequents in ans_df['consequents'].values:
         
-        list_answer.extend(list_consequents)
-        list_answer = list(dict.fromkeys(list_answer))
+        list_icd10_answer.extend(list_consequents)
+        list_icd10_answer = [item for item in list_icd10_answer if item not in temp_list_icd10]
+        # list_icd10_answer = list(dict.fromkeys(list_icd10_answer))
+        list_icd10_answer = list(set(list_icd10_answer))
 
-        if len(list_answer)>=max_items:
+        if len(list_icd10_answer)>max_items:
             break;
     
-    print(f"{list_answer=}")
-    print(f"{[dict_icd10_master_word.get(item, list())[0] for item in list_answer]=}")
+    # find recommendations from association from chief complain if list of answer is less than desired numbers
+    if len(list_icd10_answer)<max_items and len(temp_list_q)>1:
+        masked = association_rule_df['antecedents'].apply(lambda x: set(x)==set([temp_list_icd10[0]]))
+        ans_df = association_rule_df[masked].sort_values('confidence', ascending=False)
+        ans_df = ans_df[(ans_df['lift']>=1)]
+        for list_consequents in ans_df['consequents'].values:
+        
+            list_icd10_answer.extend(list_consequents)
+            list_icd10_answer = [item for item in list_icd10_answer if item not in temp_list_icd10]
+            # list_icd10_answer = list(dict.fromkeys(list_icd10_answer))
+            list_icd10_answer = list(set(list_icd10_answer))
 
-    list_answer = [dict_icd10_master_word.get(item, list())[0].capitalize() for item in list_answer]
+            if len(list_icd10_answer)>max_items:
+                break;
+    
+    print(f"{list_icd10_answer=}")
+
+    list_answer = [dict_icd10_master_word.get(item, list())[0].capitalize() for item in list_icd10_answer if len(dict_icd10_master_word.get(item, list()))>0][:max_items]
+    print(f"IN FUNCTION {list_answer=}")
 
     return list_answer
 
@@ -75,7 +97,8 @@ def healthz():
 @app.post("/query")
 def query(body: QueryInputSchema) -> QueryOutputSchema:
     print(f"list_q = {body.list_q}")
-    answer = get_symptom_recommendation(body.list_q, body.max_items)
+    answer = get_symptom_recommendation(tuple(body.list_q), body.max_items)
+    print(f"{answer=}")
     return {
         "list_q": body.list_q,
         "list_recommendation": answer,
